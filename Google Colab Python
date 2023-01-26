@@ -1,0 +1,91 @@
+from google.colab import drive
+drive.mount('/content/drive')
+!pip install -q keras
+from keras.applications.inception_v3 import InceptionV3
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras import layers
+from keras.models import Model
+from keras.layers import Flatten
+from tensorflow.keras.layers import Conv2D, AveragePooling2D, GlobalAveragePooling2D
+from keras.optimizers import RMSprop
+from keras.optimizers import Adamax,SGD
+from tensorflow.keras.utils import img_to_array
+from tensorflow.keras.utils import load_img
+from tensorflow.keras.models import Sequential
+from keras.layers import Dense
+import matplotlib.pyplot as plt
+from glob import glob
+from keras.utils import to_categorical
+import cv2
+import numpy as np
+from __future__ import absolute_import, division, print_function
+import os
+import tensorflow as tf
+from tensorflow import keras
+train_path="/content/drive/MyDrive/BaklagilDataSet/DB3_Histeq/fold5/train/images/"
+test_path="/content/drive/MyDrive/BaklagilDataSet/DB3_Histeq/fold5/test/images/"
+
+trainDataGen=ImageDataGenerator(rescale=1./255)
+testDataGen=ImageDataGenerator(rescale=1./255) 
+
+trainGen=trainDataGen.flow_from_directory(
+    train_path,
+    target_size=(224,224),
+    color_mode='rgb',
+    class_mode="categorical",
+    batch_size=50,
+    subset="training"
+)
+
+#valGen=trainDataGen.flow_from_directory(
+ #   train_path,
+  #  target_size=(224,224),
+   # color_mode='rgb',
+    #class_mode="categorical",
+   # batch_size=50,
+    #subset="validation"
+
+#)
+
+testGen = testDataGen.flow_from_directory(
+    test_path,
+    target_size=(224,224),
+    color_mode='rgb',
+    class_mode="categorical",
+    batch_size=50,
+)
+inc= tf.keras.applications.InceptionV3( input_shape=(224,224,3),
+                                       include_top=False,
+                                       weights='imagenet')
+
+#inc.trainable=False
+
+
+print(len(inc.layers))
+for layer in inc.layers:
+  print(layer.name," ",layer.trainable)
+
+for layer in inc.layers:
+  layer.trainable=False
+
+x =Flatten()(inc.output)
+x =GlobalAveragePooling2D()(inc.output)
+x= Dense(32, activation='relu')(x)
+x= Dense(32, activation='relu')(x)
+out=Dense(30,activation='softmax')(x)
+model= Model(inputs=inc.input, outputs=out)
+
+model.summary()  
+
+#from keras.optimizers.optimizer_v2.adamax import Adamax
+from keras.optimizers import SGD
+optim_1 = SGD(learning_rate=0.0001)
+
+model.compile(loss="categorical_crossentropy", optimizer=optim_1, metrics=["accuracy"])
+hist=model.fit(
+    trainGen,
+    #steps_per_epoch=trainGen.samples//50,
+    validation_data=testGen,
+    epochs=25)
+    #validation_steps=testGen.samples//50
+#)
